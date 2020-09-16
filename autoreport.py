@@ -6,15 +6,19 @@ import os
 import re
 import pyodbc
 from pyad import aduser
+# spróbować adquery
 from tabulate import tabulate
 from pyad.pyadexceptions import invalidResults
 from display_data import display_data
 
+# Zmienne globalne dajemy z dużej litery
+# wyjtek, django_urls
+# bardziej podejscie klasowe
 
 outlook = win32com.client.Dispatch(
     "Outlook.Application").GetNamespace("MAPI")
 
-# CHECKS PASSWORD VAULT'S INBOX MESSAGES
+# CHEIDS PASSWORD VAULT'S INBOX MESSAGES
 o = win32com.client.Dispatch("Outlook.Application")
 folder = outlook.Folders("Password Vault")
 inbox = folder.Folders("Inbox")
@@ -23,128 +27,128 @@ messages = inbox.Items
 # Script sometimes doesn't get newest messages and this command solves the problem
 messages.Sort("[ReceivedTime]", True)
 
-# Keywords -> We will later check if the message subject has any of them
-keywords = ["report", "reports", "inventory", "activity",
-            "activities", "raport", "testowanie skryptu",
-            "extract", "scs", "soll", "ist", "npa review", "usage"]
+# Keywords -> We will later cheID if the message subject has any of them
+keywords = ["SOME KEYWORDS"]
 
 
 # Regex patterns to get safe names from e-mail message
-regex_patterns = [r'\d{5}', r'PAAPPL[\w_-]*', r'PAPPL[\w_-]*',
-                  r'DTAPAPPLU[\w_-]*', r'DTAPINFR[\w_-]*', r'DTAPPLU[\w_-]*', r'TAPAPPL[\w_-]*', r'DAPAPPLU[\w_-]*']
+regex_patterns = ["""SOME REGEX PATTERNS"""]
 
 
-def find_safe_owners_and_safe_data(safe_numbers: list) -> tuple:
+def find_info_in_access_db(safe_numbers: list) -> tuple:
     """
-    Finds owners and delegate safe owners and adds their CKs
-        to owners_delegates list (later will be used to find usernames by their CKs in AD)
-    Adds safe's info to safes_data list i.e. (FullName, OwnerCK, DelegateCK)
+    Finds owners and delegate info_owners and adds their IDs
+        to info_owners list (later will be used to find usernames by their IDs in AD)
+    Adds safe's info to info list i.e. (Column1, Column2, Column3)
         as one list element (will be useful to print the data)
 
-    :return: safes_data and owners_delegates lists
+    :return: info and info_owners lists
     """
-    safes_data = []
-    owners_delegates = []
+    info = []
+    info_owners = []
 
-    def check_if_owner_or_delegate_CK_in_row(CKs: list) -> list:
+    def check_ID_if_info_owner_in_row(IDs: list) -> list:
         """
-        Checks if safe owner or delegate safe owner are provided
-        :param CKs:  safe owners and/or delegate safe owners CKs
-        :return: a list with CKs converted to uppercase
+        CheIDs if info_owner or delegate info_owner are provided
+        :param IDs:  info_owners and/or delegate info_owners IDs
+        :return: a list with IDs converted to uppercase
         """
-        CK_exist = []
-        for CK in CKs:
+        ID_exist = []
+        for ID in IDs:
             try:
-                CK_exist.append(CK.upper())
+                ID_exist.append(ID.upper())
             except AttributeError:
                 continue
-        return CK_exist
+        return ID_exist
 
     if safe_numbers:
         conn = pyodbc.connect(
-            r'Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=Z:\MCDB_PRD.accdb;')
+            r'Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ="""PATH TO ACCESS DB"""')
         cursor = conn.cursor()
         cursor.execute(
-            'select FullName, OwnerCK, DelegateCK from safes')
+            'select FullName, OwnerID, DelegateID from info')
         for row in cursor.fetchall():
             for safe in safe_numbers:
                 if row.FullName.startswith(safe):
-                    CKs_found_in_row = check_if_owner_or_delegate_CK_in_row(
+                    IDs_found_in_row = check_ID_if_info_owner_in_row(
                         row[1:3])
-                    for CK in CKs_found_in_row:
-                        if CK not in owners_delegates:
-                            owners_delegates.append(CK)
-                    safes_data.append(row)
-    return safes_data, owners_delegates
+                    for ID in IDs_found_in_row:
+                        if ID not in info_owners:
+                            info_owners.append(ID)
+                    info.append(row)
+    return info, info_owners
 
 
-def get_owners_and_delegates_from_ad(owners_delegates: list) -> dict:
+def get_user_info_From_ad(info_owners: list) -> dict:
     """
-    Gets usernames by given CKs list from Active Directory and puts them into so_do_dict
-    :param owners_delegates: a list with owners and delegates CKs
-    :return: a dictionary, where CKs are keys() and usernames are values()
+    Gets usernames by given IDs list from Active Directory and puts them into so_do_dict
+    :param info_owners: a list with owners and delegates IDs
+    :return: a dictionary, where IDs are keys() and usernames are values()
     """
     so_do_dict = {}
-    for ck in owners_delegates:
+    for ID in info_owners:
         try:
-            user = aduser.ADUser.from_cn(ck)
-            try:
-                so_do_dict[ck] = user.Description
-            except UnicodeEncodeError:
-                so_do_dict[ck] = str(
-                    user.Description, encoding='utf-8', errors='ignore')
+            user = aduser.ADUser.from_cn(ID)
+            wrong_names = ["Warszawa ul. Puławska 2",
+                           'Katowice ul. Konduktorska 35']
+
+            user_wrong_ad_name = bool(
+                user.Description in wrong_names)
+
+            so_do_dict[ID] = user.Description if not user_wrong_ad_name else user.DisplayName
+
         except invalidResults:
             continue
     return so_do_dict
 
 
-def get_owners_delegates_emails(owners_delegates: list) -> dict:
+def get_info_owners_emails(info_owners: list) -> dict:
     """
     Finds owners and delegates e-mails and puts
-    them into owners_delegates_emails dict.
-    :param owners_delegates: a list of owners and delegates CKs
+    them into info_owners_emails dict.
+    :param info_owners: a list of owners and delegates IDs
     """
-    owners_delegates_emails = {}
-    for ck in owners_delegates:
-        user = aduser.ADUser.from_cn(ck)
-        owners_delegates_emails[ck] = user.UserPrincipalName
-    return owners_delegates_emails
+    info_owners_emails = {}
+    for ID in info_owners:
+        user = aduser.ADUser.from_cn(ID)
+        info_owners_emails[ID] = user.UserPrincipalName
+    return info_owners_emails
 
 
-def find_safes_in_message_body_by_regex(regex_patterns: list, message: object) -> list:
+def find_info_in_message_body_by_regex(regex_patterns: list, message: object) -> list:
     """
     Finds safe names by given regex patterns
     :param regex_patterns: a list with regex patterns to use while getting safe names from message body
     :param message: a message object being currently analyzed
-    :return: message_body_safes_found list with safe names found in message body
+    :return: message_body_info_found list with safe names found in message body
     """
-    message_body_safes_found = []
+    message_body_info_found = []
     for regex in regex_patterns:
         pattern = re.compile(regex)
         for safe in pattern.findall(message.Body):
-            if safe not in message_body_safes_found:
-                message_body_safes_found.append(safe)
-    return message_body_safes_found
+            if safe not in message_body_info_found:
+                message_body_info_found.append(safe)
+    return message_body_info_found
 
 
-def create_safe_data_to_display(safes_data: list, so_do_dict: dict) -> list:
+def create_data_to_display(info: list, so_do_dict: dict) -> list:
     """
     Creates a list, with lists as elements, which will be then used to display to the end user with tabulate library
-    :param safes_data: a list with tuple elements in format ("safe name", "owner CK", "delegate CK)
-    :param so_do_dict: a dictionary with owners and delegate CKs as keys() and their usernames as values()
-        so_do_dict stands for safe owners and delegate owners dictionary
-    :return: a safes_with_owners_delegates list to display later with tabulate library
+    :param info: a list with tuple elements in format ("safe name", "owner ID", "delegate ID)
+    :param so_do_dict: a dictionary with owners and delegate IDs as keys() and their usernames as values()
+        so_do_dict stands for info_owners and delegate owners dictionary
+    :return: a info_with_info_owners list to display later with tabulate library
     """
-    safes_with_owners_delegates = []
-    for safe_data in safes_data:
-        safes_with_owners_delegates.append(
+    info_with_info_owners = []
+    for safe_data in info:
+        info_with_info_owners.append(
             [safe_data[0], so_do_dict.get(safe_data[1]), so_do_dict.get(safe_data[2])])
-    return safes_with_owners_delegates
+    return info_with_info_owners
 
 
 def find_approval(message_body: str, sender_name: str) -> dict:
     """
-    Finds the approvals of the potential safe owners or delegate safe owners.
+    Finds the approvals of the potential info_owners or delegate info_owners.
     Takes the entire body of the message and cuts it on sub messages with regex ("From") keyword.
     :return: approvals found in the conversation
     """
@@ -238,7 +242,6 @@ def find_approval(message_body: str, sender_name: str) -> dict:
             sender_data = sender_data_regex.findall(message)
             approvals = get_approvals(
                 sender_data, approvals, cleared_message, message_date)
-
     for key in list(approvals):
         if key.startswith('"'):
             try:
@@ -253,9 +256,9 @@ def job():
     For each message with a keyword in keywords list in subject:
     1. Decode message subject (prevent errors coming from non-ascii characters)
     2. Get sender e-mail address if the sender is not Password Vault
-    3. Parse the message body and find safes with regex
-    4. Get safes data from Access Database
-    5. Get safe owners and delegate safe owners data from Active Directory
+    3. Parse the message body and find info with regex
+    4. Get info data from Access Database
+    5. Get info_owners and delegate info_owners data from Active Directory
     6. Find approvals in message body
     7. Create data to display with tabulate library
     """
@@ -267,27 +270,27 @@ def job():
             sender_email = [
                 message.Sender.GetExchangeUser().PrimarySmtpAddress]
             sender_name = message.Sender.GetExchangeUser().Name
-            if sender_email[0] == "password.vault@ing.com":
+            if sender_email[0] == """ ENTER YOUR INBOX EMAIL""":
                 continue
             else:
-                message_body_safes_found = find_safes_in_message_body_by_regex(
+                message_body_info_found = find_info_in_message_body_by_regex(
                     regex_patterns, message)
-                safes_data, owners_delegates = find_safe_owners_and_safe_data(
-                    message_body_safes_found)
-                so_do_dict = get_owners_and_delegates_from_ad(
-                    owners_delegates)
-                owners_delegates_emails = get_owners_delegates_emails(
-                    owners_delegates)
+                info, info_owners = find_info_in_access_db(
+                    message_body_info_found)
+                so_do_dict = get_user_info_From_ad(
+                    info_owners)
+                info_owners_emails = get_info_owners_emails(
+                    info_owners)
                 message_body_encoded = message.Body.encode(
                     "ascii", "ignore").decode()
                 body_emails = re.compile(
                     r'[\w.]*@[\w.]*').findall(message_body_encoded)
                 approvals = find_approval(
                     message.Body, sender_name)
-                safes_with_owners_delegates = create_safe_data_to_display(
-                    safes_data, so_do_dict)
+                info_with_info_owners = create_data_to_display(
+                    info, so_do_dict)
                 display_data(
-                    message, sender_email[0], approvals, safes_with_owners_delegates, safes_data)
+                    message, sender_email[0], approvals, info_with_info_owners, info)
 
 
 job()
