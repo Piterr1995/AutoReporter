@@ -6,19 +6,16 @@ import os
 import re
 import pyodbc
 from pyad import aduser
-# spróbować adquery
 from tabulate import tabulate
 from pyad.pyadexceptions import invalidResults
 from display_data import display_data
 
-# Zmienne globalne dajemy z dużej litery
-# wyjtek, django_urls
-# bardziej podejscie klasowe
+
 
 outlook = win32com.client.Dispatch(
     "Outlook.Application").GetNamespace("MAPI")
 
-# CHEIDS PASSWORD VAULT'S INBOX MESSAGES
+# CHEIDS INBOX MESSAGES
 o = win32com.client.Dispatch("Outlook.Application")
 folder = outlook.Folders("Password Vault")
 inbox = folder.Folders("Inbox")
