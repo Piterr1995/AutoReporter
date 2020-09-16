@@ -31,15 +31,15 @@ messages.Sort("[ReceivedTime]", True)
 keywords = ["SOME KEYWORDS"]
 
 
-# Regex patterns to get safe names from e-mail message
+# Regex patterns to get info names from e-mail message
 regex_patterns = ["""SOME REGEX PATTERNS"""]
 
 
-def find_info_in_access_db(safe_numbers: list) -> tuple:
+def find_info_in_access_db(info_numbers: list) -> tuple:
     """
     Finds owners and delegate info_owners and adds their IDs
         to info_owners list (later will be used to find usernames by their IDs in AD)
-    Adds safe's info to info list i.e. (Column1, Column2, Column3)
+    Adds info's info to info list i.e. (Column1, Column2, Column3)
         as one list element (will be useful to print the data)
 
     :return: info and info_owners lists
@@ -61,15 +61,15 @@ def find_info_in_access_db(safe_numbers: list) -> tuple:
                 continue
         return ID_exist
 
-    if safe_numbers:
+    if info_numbers:
         conn = pyodbc.connect(
             r'Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ="""PATH TO ACCESS DB"""')
         cursor = conn.cursor()
         cursor.execute(
             'select FullName, OwnerID, DelegateID from info')
         for row in cursor.fetchall():
-            for safe in safe_numbers:
-                if row.FullName.startswith(safe):
+            for info in info_numbers:
+                if row.FullName.startswith(info):
                     IDs_found_in_row = check_ID_if_info_owner_in_row(
                         row[1:3])
                     for ID in IDs_found_in_row:
@@ -89,8 +89,8 @@ def get_user_info_From_ad(info_owners: list) -> dict:
     for ID in info_owners:
         try:
             user = aduser.ADUser.from_cn(ID)
-            wrong_names = ["Warszawa ul. Puławska 2",
-                           'Katowice ul. Konduktorska 35']
+            wrong_names = ["Wrong Name 1",
+                           'Wrong Name 2']
 
             user_wrong_ad_name = bool(
                 user.Description in wrong_names)
@@ -117,32 +117,32 @@ def get_info_owners_emails(info_owners: list) -> dict:
 
 def find_info_in_message_body_by_regex(regex_patterns: list, message: object) -> list:
     """
-    Finds safe names by given regex patterns
-    :param regex_patterns: a list with regex patterns to use while getting safe names from message body
+    Finds info names by given regex patterns
+    :param regex_patterns: a list with regex patterns to use while getting info names from message body
     :param message: a message object being currently analyzed
-    :return: message_body_info_found list with safe names found in message body
+    :return: message_body_info_found list with info names found in message body
     """
     message_body_info_found = []
     for regex in regex_patterns:
         pattern = re.compile(regex)
-        for safe in pattern.findall(message.Body):
-            if safe not in message_body_info_found:
-                message_body_info_found.append(safe)
+        for info in pattern.findall(message.Body):
+            if info not in message_body_info_found:
+                message_body_info_found.append(info)
     return message_body_info_found
 
 
 def create_data_to_display(info: list, so_do_dict: dict) -> list:
     """
     Creates a list, with lists as elements, which will be then used to display to the end user with tabulate library
-    :param info: a list with tuple elements in format ("safe name", "owner ID", "delegate ID)
+    :param info: a list with tuple elements in format ("info name", "owner ID", "delegate ID)
     :param so_do_dict: a dictionary with owners and delegate IDs as keys() and their usernames as values()
         so_do_dict stands for info_owners and delegate owners dictionary
     :return: a info_with_info_owners list to display later with tabulate library
     """
     info_with_info_owners = []
-    for safe_data in info:
+    for info_data in info:
         info_with_info_owners.append(
-            [safe_data[0], so_do_dict.get(safe_data[1]), so_do_dict.get(safe_data[2])])
+            [info_data[0], so_do_dict.get(info_data[1]), so_do_dict.get(info_data[2])])
     return info_with_info_owners
 
 
