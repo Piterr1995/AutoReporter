@@ -1,11 +1,11 @@
 import pytest
 import autoreport
-from email_messages import email_message_with_safes, email_message_with_approval, second_email_message_with_approval
+from email_messages import email_message_with_info, email_message_with_approval, second_email_message_with_approval
 
 
 @pytest.mark.slow
-def test_find_safe_owners_and_safe_data():
-    safes_data, owners_delegates = autoreport.find_safe_owners_and_safe_data(['111111', '00000', '2222222',
+def test_find_info_owners_and_data():
+    data, owners_delegates = autoreport.find_info_owners_and_data(['111111', '00000', '2222222',
                                                                               "3333333", "44444444444444",
                                                                               "55555555", "666666666"])
     assert str(safes_data) == str([
@@ -39,18 +39,17 @@ def test_get_owners_delegates_emails():
 
 
 @pytest.mark.fast
-def test_find_safes_in_message_body_by_regex():
-    regex_patterns = [r'\d{5}', r'PAAPPL[\w_-]*', r'PAPPL[\w_-]*',
-                      r'DTAPAPPLU[\w_-]*', r'DTAPINFR[\w_-]*', r'DTAPPLU[\w_-]*']
-    email_string = email_message_with_safes()
+def test_find_info_in_message_body_by_regex():
+    regex_patterns = ["""Some regex patterns"""]
+    email_string = email_message_with_info()
 
     class Message():
         def __init__(self, Body):
             self.Body = Body
     message = Message(Body=email_string)
-    message_body_safes_found = autoreport.find_safes_in_message_body_by_regex(
+    message_body_info_found = autoreport.find_info_in_message_body_by_regex(
         regex_patterns, message)
-    assert message_body_safes_found == ['000000', '11111111', '222222']
+    assert message_body_info_found == ['000000', '11111111', '222222']
 
 
 @pytest.mark.fast
