@@ -76,7 +76,7 @@ def find_info_in_access_db(info_numbers: list) -> tuple:
     return info, info_owners
 
 
-def get_user_info_From_ad(info_owners: list) -> dict:
+def get_user_info_from_ad(info_owners: list) -> dict:
     """
     Gets usernames by given IDs list from Active Directory and puts them into so_do_dict
     :param info_owners: a list with owners and delegates IDs
